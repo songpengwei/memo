@@ -180,6 +180,18 @@ def cmd_correct(args) -> int:
     return EXIT_OK
 
 
+def cmd_restate(args) -> int:
+    home = store.data_home()
+    new_claim = store.restate(home, args.id, args.text)
+    if new_claim is None:
+        print(f"错误：找不到活跃 claim {args.id}", file=sys.stderr)
+        return EXIT_ERR
+    embed.reindex(home)
+    _emit({"restated": args.id, "new_id": new_claim["id"],
+           "hits": new_claim.get("hits", 0)}, args.pretty)
+    return EXIT_OK
+
+
 def cmd_forget(args) -> int:
     home = store.data_home()
     if not store.forget(home, args.id, hard=args.hard):
@@ -324,10 +336,15 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--budget", type=int, default=CONTEXT_DEFAULT_BUDGET)
     sp.set_defaults(func=cmd_context)
 
-    sp = sub.add_parser("correct", help="修正一条记忆（supersede）")
+    sp = sub.add_parser("correct", help="修正一条记忆（supersede，强度归零）")
     sp.add_argument("id")
     sp.add_argument("text")
     sp.set_defaults(func=cmd_correct)
+
+    sp = sub.add_parser("restate", help="再巩固：重述表述但保留 hits/confidence")
+    sp.add_argument("id")
+    sp.add_argument("text")
+    sp.set_defaults(func=cmd_restate)
 
     sp = sub.add_parser("forget", help="遗忘一条记忆")
     sp.add_argument("id")

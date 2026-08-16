@@ -38,7 +38,8 @@ memo <子命令> ...
 | `memo recall "查询" [-k 5] [--deep]` | 语义召回；`--deep` 下钻情景日志层（默认只查主库） |
 | `memo remember "事实" [--key K] [--kind K] [--entity E]` | 写入；有 key = 幂等更新，无 key = 追加（近义自动去重） |
 | `memo query [--entity E --kind K] [--min-confidence 0.6]`（别名 `list`） | 结构化字段精确过滤；不带参数 = 列出全部活跃记忆 |
-| `memo correct <id> "新表述"` | 修正（旧 claim 保留谱系，不删） |
+| `memo correct <id> "新表述"` | 修正：事实变了（旧 claim 保留谱系，强度归零） |
+| `memo restate <id> "新表述"` | 再巩固：事实没变只刷新措辞（hits/confidence 继承，不清零） |
 | `memo show <id>` | 按 id 查看单条 claim（含非活跃状态） |
 | `memo forget <id> [--hard]` | 软删除；`--hard` 物理移除（审计仍留痕） |
 | `memo restore <id>` | 回滚：恢复被软删/取代的记忆 |
@@ -52,4 +53,5 @@ memo <子命令> ...
 
 - pressure ≥ 0.8 时 remember 会返回警告，此时新写入要更挑剔，并提示用户跑 `memo sleep`。
 - 情景日志层（`memo log`）记的是"发生了什么"，主库记的是"什么是真的"。事件流水进 log，稳定事实进 remember。
+- 再巩固：recall/context 命中后发现某条措辞过时或含糊 → `memo restate <id> "更准确的表述"`。这继承 hits 与 confidence，是"刷新"；事实本身变了才用 `correct`（强度归零重新积累）。
 - 文本中避免反引号：经 shell 调用时会被命令替换吞掉；长文本用单引号包裹。

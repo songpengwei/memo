@@ -99,6 +99,33 @@ def test_correct(home, capsys):
     assert code == 1
 
 
+def test_restate(home, capsys):
+    _, recs = run(capsys, "remember", "用户偏好宋代木构建筑的测绘数据", "--kind", "preference")
+    old_id = recs[0]["id"]
+    # 模拟多次召回命中：积累 hits 并触发 confidence 自动升级
+    for _ in range(3):
+        store.touch(home, old_id)
+    before = store.replay(home)[old_id]
+    assert before["hits"] == 3 and before["confidence"] == "mid"
+
+    code, recs = run(capsys, "restate", old_id, "用户偏好宋辽金木构建筑的可溯源测绘数据")
+    assert code == 0
+    assert recs[0]["restated"] == old_id
+    all_claims = store.replay(home)
+    assert all_claims[old_id]["status"] == "superseded"  # 谱系保留
+    new_claim = all_claims[recs[0]["new_id"]]
+    # 再巩固：事实没变只是重述，使用强度全部继承（区别于 correct 的归零）
+    assert new_claim["status"] == "active"
+    assert new_claim["text"] == "用户偏好宋辽金木构建筑的可溯源测绘数据"
+    assert new_claim["hits"] == 3
+    assert new_claim["confidence"] == "mid"
+    assert new_claim["last_accessed"] == before["last_accessed"]
+    assert new_claim["created"] == before["created"]
+    # restate 不存在的 id 报错
+    code, _ = run(capsys, "restate", "mem_xxxx", "随便")
+    assert code == 1
+
+
 def test_forget_soft_and_hard(home, capsys):
     _, r1 = run(capsys, "remember", "临时的购物清单", "--kind", "life")
     _, r2 = run(capsys, "remember", "另一条临时记录", "--kind", "life")

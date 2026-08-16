@@ -90,6 +90,12 @@ def replay(home: Path) -> dict[str, dict]:
                     "last_accessed": None,
                     "status": "active",
                 }
+                if rec.get("carry"):
+                    # restate（再巩固）：事实没变只是重述，使用强度不重置——
+                    # hits / last_accessed / confidence / created 全部继承
+                    succ["hits"] = tgt.get("hits", 0)
+                    succ["last_accessed"] = tgt.get("last_accessed")
+                    succ["created"] = tgt["created"]
                 claims[succ["id"]] = succ
             tgt["status"] = "superseded"
         elif op == "forget":
@@ -156,6 +162,21 @@ def correct(home: Path, target: str, text: str) -> dict | None:
         return None
     new_claim_id = new_id()
     append(home, {"op": "supersede", "target": target, "text": text,
+                  "new_id": new_claim_id, "ts": now_iso()})
+    return replay(home)[new_claim_id]
+
+
+def restate(home: Path, target: str, text: str) -> dict | None:
+    """再巩固：重述文本但保留使用强度（hits/last_accessed/confidence/created）。
+
+    与 correct 的分工：correct 是事实变了（强度归零重新积累）；
+    restate 是同一记忆换更准确的表述（强度继承，改写不受惩罚）。
+    """
+    claims = replay(home)
+    if target not in claims or claims[target]["status"] != "active":
+        return None
+    new_claim_id = new_id()
+    append(home, {"op": "supersede", "target": target, "text": text, "carry": True,
                   "new_id": new_claim_id, "ts": now_iso()})
     return replay(home)[new_claim_id]
 

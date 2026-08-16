@@ -35,7 +35,8 @@ chmod +x ~/.local/bin/memo
 | `memo query [--entity E] [--kind K] [--status S] [--min-confidence F]`（别名 `list`） | 结构化过滤；不带参数 = 列出全部活跃记忆 |
 | `memo context TASK [--budget 2000]` | recall top-20 按 token 预算打包 |
 | `memo profile [--budget 500] [--write]` | 生成 hot 层画像；`--write` 落盘 `~/.memo/profile.md` |
-| `memo correct ID TEXT` | 修正（supersede，保留谱系） |
+| `memo correct ID TEXT` | 修正（supersede，保留谱系，强度归零） |
+| `memo restate ID TEXT` | 再巩固：重述表述但继承 hits/confidence/年龄（召回后顺手刷新措辞用） |
 | `memo show ID` | 按 id 查看单条 claim（含已被取代/遗忘的） |
 | `memo forget ID [--hard]` | 软删；--hard 物理移除 |
 | `memo restore ID` | 回滚：恢复被软删/取代的记忆 |
