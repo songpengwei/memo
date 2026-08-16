@@ -1,0 +1,23 @@
+[project]
+name = "memo"
+version = "0.1.0"
+description = "Agent 记忆系统 CLI：JSONL append-only + 本地语义召回"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+    "fastembed>=0.7.4",
+    "numpy>=2.4.6",
+    "onnxruntime<1.24",
+]
+
+[project.scripts]
+memo = "memo.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = [
+    "pytest>=9.1.1",
+]
