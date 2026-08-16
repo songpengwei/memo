@@ -54,4 +54,14 @@ memo <子命令> ...
 - pressure ≥ 0.8 时 remember 会返回警告，此时新写入要更挑剔，并提示用户跑 `memo sleep`。
 - 情景日志层（`memo log`）记的是"发生了什么"，主库记的是"什么是真的"。事件流水进 log，稳定事实进 remember。
 - 再巩固：recall/context 命中后发现某条措辞过时或含糊 → `memo restate <id> "更准确的表述"`。这继承 hits 与 confidence，是"刷新"；事实本身变了才用 `correct`（强度归零重新积累）。
+
+## 定时巩固（sleep cron）
+
+建议配一个每日定时任务（如每晚 23:47 附近，避开整点/半点）触发巩固，流程：
+
+1. 跑 `memo sleep`——机械部分自动执行：Ebbinghaus 衰减遗忘 + 近重复合并，报告落盘 `~/.memo/reports/YYYY-MM-DD.json`。
+2. 审阅报告：冲突带（sim [0.75,0.95)）的 reconcile、entity 簇的语义压缩、episodic 日志的 promote/discard，都需要你在场判断——用 `remember`/`correct`/`restate`/`forget` 执行。
+3. 向用户汇报"昨晚巩固了什么、遗忘了什么"——遗忘必须可审计，不静默发生。
+
+会话内 agent 可用调度工具注册（cron 表达式如 `47 23 * * *`），或提醒用户配系统级 crontab。
 - 文本中避免反引号：经 shell 调用时会被命令替换吞掉；长文本用单引号包裹。

@@ -25,6 +25,26 @@ chmod +x ~/.local/bin/memo
 
 `skills/memo/SKILL.md` 是给 agent 的调用纪律（何时取上下文、何时记/改/忘），复制到 agent 的 skill 目录即可（如 kimi-code 的 `~/.kimi-code/skills/memo/`）。CLI 只是工具，纪律才是核心。
 
+## 最简单的用法
+
+memo 的 CLI 是给 agent 用的，你平时只需要用自然语言对 agent 说：
+
+1. **记**：「memo 记下木鸟色卡：blue #77AAC2、green #79D9CE、yellow #FCD765、red #F19A97、dark #696773、light #EFF1F3」
+   → agent 执行 `memo remember '木鸟色卡：blue #77AAC2、…' --key palette.muniao --kind resource`。
+   命名色卡带 key，以后说"改一下木鸟色卡的 red"就是幂等更新，不会越攒越多。
+2. **用**：「memo 使用木鸟色卡来给当前网站重新配色」
+   → agent 先 `memo recall "木鸟色卡"` 取回色值，再动手改代码——你不用再贴一遍。
+3. **养**：配一个每日定时任务跑 `memo sleep`（见 skill 的"定时巩固"一节），巩固、遗忘、合并都在夜里自动发生，第二天让 agent 带你审报告。
+
+其他值得知道的：
+
+- 退出码语义化：0 有结果 / 1 错误 / 2 无结果，`memo recall ... || memo remember ...` 即"查不到就记"。
+- `--pretty` 是全局参数，放子命令**之前**（`memo --pretty status`）。
+- 经 shell 调用时文本里别用反引号（会被命令替换吞掉），长文本用单引号包裹。
+- 首次 `recall` 会下载 bge-small-zh 向量模型（约百 MB），之后完全本地离线。
+- 遗忘可审计：`memo sleep --dry-run` 随时预览"今晚要忘什么、合并什么"，执行后报告落盘 `~/.memo/reports/`。
+- 身份类信息（学校、职位、住址）让 agent 带 `--key` 记；事件流水走 `memo log`，别混进主库。
+
 ## 命令
 
 | 命令 | 说明 |
