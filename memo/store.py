@@ -211,6 +211,40 @@ def restore(home: Path, target: str) -> bool:
     return True
 
 
+def merge_file(home: Path, src: Path) -> dict:
+    """并脑：把另一份 claims.jsonl（其他设备/历史版本）并入本库，幂等可反复执行。
+
+    去重键 = (ts 或 created, 整行文本)：已吸收的行原样跳过，
+    因此 pull 到旧历史、多端乱序推送都安全。谱系靠"行在新库重放"天然保留。
+    """
+    ensure_dirs(home)
+    dst = claims_path(home)
+    seen = set()
+    if dst.exists():
+        for line in dst.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line:
+                rec = json.loads(line)
+                seen.add((rec.get("ts") or rec.get("created"), line))
+    new_lines = []
+    for line in src.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        rec = json.loads(line)
+        k = (rec.get("ts") or rec.get("created"), line)
+        if k not in seen:
+            seen.add(k)
+            new_lines.append(line)
+    if new_lines:
+        with dst.open("a", encoding="utf-8") as f:
+            for line in new_lines:
+                f.write(line + "\n")
+        audit(home, "merge", {"src": str(src), "added_lines": len(new_lines)})
+    return {"added_lines": len(new_lines),
+            "active_claims": len(active_claims(home))}
+
+
 _CONFIDENCE_ORDER = ("low", "mid", "high")
 
 

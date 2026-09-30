@@ -6,8 +6,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 import sys
+import tempfile
 from datetime import datetime, timezone
+from pathlib import Path
 
 from . import embed, profile as profile_mod, recall as recall_mod, sleep as sleep_mod, store
 from .budget import (CONTEXT_DEFAULT_BUDGET, DEDUP_THRESHOLD, HOT_TOKEN_BUDGET,
@@ -284,8 +287,44 @@ def cmd_sleep(args) -> int:
                        or report.get("episodic_candidates")) else EXIT_EMPTY
 
 
-# ---------- argparse 骨架 ----------
+def cmd_merge(args) -> int:
+    """并脑：git fetch 后，把 HEAD 与 origin/main 历史上的所有 claims.jsonl
+    版本幂等并入本库。fetch 失败（离线/无远端）不阻塞，仍合并本地历史。"""
+    home = store.data_home()
+    if not (home / ".git").exists():
+        print(f"错误：{home} 不是 git 仓库，先关联远端仓库再多端同步", file=sys.stderr)
+        return EXIT_ERR
+    fetch = subprocess.run(["git", "-C", str(home), "fetch", "--all"],
+                           capture_output=True, text=True)
+    revs = subprocess.run(
+        ["git", "-C", str(home), "rev-list", "--all", "--", "claims.jsonl"],
+        capture_output=True, text=True).stdout.split()
+    total = 0
+    for rev in revs:
+        show = subprocess.run(["git", "-C", str(home), "show", f"{rev}:claims.jsonl"],
+                              capture_output=True, text=True)
+        if show.returncode != 0:
+            continue
+        with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False,
+                                         encoding="utf-8") as tf:
+            tf.write(show.stdout)
+            tmp = Path(tf.name)
+        try:
+            total += store.merge_file(home, tmp)["added_lines"]
+        finally:
+            tmp.unlink()
+    if total:
+        embed.reindex(home)  # 并入了新 claim，全量重建索引
+    out = {"merged_lines": total, "versions_scanned": len(revs),
+           "active_claims": len(store.active_claims(home)),
+           "fetched": fetch.returncode == 0}
+    if fetch.returncode != 0:
+        out["fetch_error"] = fetch.stderr.strip()[:200]
+    _emit(out, args.pretty)
+    return EXIT_OK
 
+
+# ---------- argparse 骨架 ----------
 def build_parser() -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(prog="memo", description="Agent 记忆系统 CLI")
     p.add_argument("--pretty", action="store_true", help="人类可读输出（默认 JSONL）")
@@ -319,7 +358,7 @@ def build_parser() -> argparse.ArgumentParser:
     sp.add_argument("--write", action="store_true", help="写入 ~/.memo/profile.md")
     sp.set_defaults(func=cmd_profile)
 
-    sp = sub.add_parser("query", aliases=["list"], help="结构化字段过滤（不带参数 = 列出全部活跃记忆）")
+    sp = sub.add_parser("query", help="结构化字段过滤（不带参数 = 列出全部活跃记忆）")
     sp.add_argument("--entity")
     sp.add_argument("--kind")
     sp.add_argument("--status", default="active",
@@ -364,6 +403,9 @@ def build_parser() -> argparse.ArgumentParser:
     sp = sub.add_parser("sleep", help="巩固：机械遗忘 + 近重复合并（--dry-run 只预览）")
     sp.add_argument("--dry-run", action="store_true", help="只输出预览，不做修改")
     sp.set_defaults(func=cmd_sleep)
+
+    sp = sub.add_parser("merge", help="并脑：git fetch 后把多端历史幂等并入本库")
+    sp.set_defaults(func=cmd_merge)
 
     return p
 

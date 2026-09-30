@@ -5,9 +5,12 @@ Agent 记忆系统 CLI：JSONL append-only 为唯一 source of truth，fastembed
 ## 安装与运行
 
 ```bash
-uv sync
-uv run memo <command>
+make build        # = uv sync
+make run ARGS="status"   # = uv run memo status
+make test         # = uv run pytest
 ```
+
+不用 Makefile 也可以直接 `uv run memo <command>`。
 
 全局入口（推荐）：建一个 shim，任意目录直接 `memo <command>`：
 
@@ -52,7 +55,7 @@ memo 的 CLI 是给 agent 用的，你平时只需要用自然语言对 agent �
 | `memo remember TEXT [--key K] [--kind K] [--entity E] [--source S] [--confidence L]` | 写入记忆；同 key 旧值自动 supersede；无 key 时近义（sim≥0.9）自动合并强化旧 claim |
 | `memo recall QUERY [-k 5] [--deep]` | 语义召回 top-k；`--deep` 下钻 episodic 情景层（bigram 匹配） |
 | `memo log [TEXT] [--topic T] [--entity E] [--since D] [--until D]` | 有 TEXT=写情景日志（按月分片），无 TEXT=查询 |
-| `memo query [--entity E] [--kind K] [--status S] [--min-confidence F]`（别名 `list`） | 结构化过滤；不带参数 = 列出全部活跃记忆 |
+| `memo query [--entity E] [--kind K] [--status S] [--min-confidence F]` | 结构化过滤；不带参数 = 列出全部活跃记忆 |
 | `memo context TASK [--budget 2000]` | recall top-20 按 token 预算打包 |
 | `memo profile [--budget 500] [--write]` | 生成 hot 层画像；`--write` 落盘 `~/.memo/profile.md` |
 | `memo correct ID TEXT` | 修正（supersede，保留谱系，强度归零） |
@@ -63,6 +66,7 @@ memo 的 CLI 是给 agent 用的，你平时只需要用自然语言对 agent �
 | `memo status` | 容量 pressure、索引与画像状态 |
 | `memo reindex` | 全量重建向量索引 |
 | `memo sleep [--dry-run]` | 巩固：Ebbinghaus 衰减遗忘（retention<0.2 且 low）、近重复合并（sim≥0.95）；冲突带 [0.75,0.95) 与同 entity 簇只报告（自带文本） |
+| `memo merge` | 并脑：git fetch 后把多端历史（HEAD+origin/main 全部 claims.jsonl 版本）幂等并入本库；需 ~/.memo 是带 remote 的 git 仓库 |
 
 退出码：0 有结果 / 1 错误 / 2 无结果。默认输出 JSONL；`--pretty` 是全局参数，放在子命令之前（`memo --pretty status`）。
 

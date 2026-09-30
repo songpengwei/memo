@@ -17,18 +17,22 @@ VEC_DIM = 512
 
 _model = None
 
+# 持久化缓存目录：fastembed 默认用 $TMPDIR/fastembed_cache，会被系统清理导致反复重下
+CACHE_DIR = Path.home() / ".cache" / "fastembed"
+
 
 class ModelMismatchError(RuntimeError):
     """索引由不同模型构建，需 reindex。"""
 
 
 def get_model():
-    """懒加载 fastembed 模型（首次运行会下载约 100MB）。"""
+    """懒加载 fastembed 模型（首次运行会下载约 100MB 到 CACHE_DIR）。"""
     global _model
     if _model is None:
         from fastembed import TextEmbedding
 
-        _model = TextEmbedding(MODEL_NAME)
+        CACHE_DIR.mkdir(parents=True, exist_ok=True)
+        _model = TextEmbedding(MODEL_NAME, cache_dir=str(CACHE_DIR))
     return _model
 
 

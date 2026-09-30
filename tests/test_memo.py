@@ -394,3 +394,30 @@ def test_profile(home, capsys):
     code, recs = run(capsys, "status")
     assert recs[0]["profile"]["exists"] is True
     assert recs[0]["profile"]["count"] == 2
+
+
+def test_merge_file_idempotent(home, capsys, tmp_path):
+    # 本机先写一条
+    run(capsys, "remember", "本机的记忆", "--key", "k.local")
+    local_lines = (home / "claims.jsonl").read_text(encoding="utf-8").splitlines()
+    # 伪造一份"远端"claims.jsonl：本机全部行 + 一条本机没有的 assert
+    remote_extra = {"id": "mem_remote", "op": "assert", "text": "mini 上的记忆",
+                    "key": "k.remote", "kind": "project", "entity": None,
+                    "confidence": "low", "source": None,
+                    "created": "2026-09-30T00:00:00Z", "hits": 0, "last_accessed": None}
+    src = tmp_path / "remote.jsonl"
+    src.write_text("\n".join(local_lines + [json.dumps(remote_extra, ensure_ascii=False)]) + "\n",
+                   encoding="utf-8")
+    stats = store.merge_file(home, src)
+    assert stats["added_lines"] == 1  # 只新增远端那条
+    assert stats["active_claims"] == 2
+    # 幂等：再并一次新增 0（pull 到旧历史安全）
+    assert store.merge_file(home, src)["added_lines"] == 0
+    # 远端 claim 回放可见
+    c = store.replay(home)["mem_remote"]
+    assert c["status"] == "active" and c["text"] == "mini 上的记忆"
+
+
+def test_merge_cli_requires_git(home, capsys):
+    code, _ = run(capsys, "merge")  # 未关联 git 仓库时报错退出
+    assert code == 1

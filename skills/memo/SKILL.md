@@ -37,7 +37,7 @@ memo <子命令> ...
 | `memo context "任务描述" [--budget 2000]` | 最常用：在 token 预算内打包与任务相关的记忆画像 |
 | `memo recall "查询" [-k 5] [--deep]` | 语义召回；`--deep` 下钻情景日志层（默认只查主库） |
 | `memo remember "事实" [--key K] [--kind K] [--entity E]` | 写入；有 key = 幂等更新，无 key = 追加（近义自动去重） |
-| `memo query [--entity E --kind K] [--min-confidence 0.6]`（别名 `list`） | 结构化字段精确过滤；不带参数 = 列出全部活跃记忆 |
+| `memo query [--entity E --kind K] [--min-confidence 0.6]` | 结构化字段精确过滤；不带参数 = 列出全部活跃记忆 |
 | `memo correct <id> "新表述"` | 修正：事实变了（旧 claim 保留谱系，强度归零） |
 | `memo restate <id> "新表述"` | 再巩固：事实没变只刷新措辞（hits/confidence 继承，不清零） |
 | `memo show <id>` | 按 id 查看单条 claim（含非活跃状态） |
@@ -47,6 +47,7 @@ memo <子命令> ...
 | `memo profile [--write]` | 生成 hot 层画像；`--write` 落盘 ~/.memo/profile.md |
 | `memo status` | 库容量、pressure、索引与画像状态 |
 | `memo sleep [--dry-run]` | 巩固：遗忘超期低置信 claim、合并近重复；dry-run 只预览 |
+| `memo merge` | 并脑：多端同步。git fetch 后把各端历史幂等并入本库（需 ~/.memo 关联远端 git 仓库） |
 | `memo reindex` | 全量重建向量索引（索引只是缓存，坏了随时重建） |
 
 ## 注意
@@ -62,6 +63,7 @@ memo <子命令> ...
 1. 跑 `memo sleep`——机械部分自动执行：Ebbinghaus 衰减遗忘 + 近重复合并，报告落盘 `~/.memo/reports/YYYY-MM-DD.json`。
 2. 审阅报告：冲突带（sim [0.75,0.95)）的 reconcile、entity 簇的语义压缩、episodic 日志的 promote/discard，都需要你在场判断——用 `remember`/`correct`/`restate`/`forget` 执行。
 3. 向用户汇报"昨晚巩固了什么、遗忘了什么"——遗忘必须可审计，不静默发生。
+4. 多端同步（~/.memo 关联了远端 git 仓库时）：先 `memo merge` 把其他端的新记忆并进来（幂等，先并后巩固更合理时也可提到第 1 步前），再 `git -C ~/.memo add -A && git -C ~/.memo commit -m "sleep YYYY-MM-DD" && git -C ~/.memo push` 把本端变更推给远端。其他端下次巩固时 merge 即可收到。
 
 会话内 agent 可用调度工具注册（cron 表达式如 `47 23 * * *`），或提醒用户配系统级 crontab。
 - 文本中避免反引号：经 shell 调用时会被命令替换吞掉；长文本用单引号包裹。
